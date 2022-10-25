@@ -12,7 +12,7 @@ def activation_function(prediction):
     """ 
     return pow(abs(np.exp(prediction)),2)
 
-def equations_of_neurons(x: array,s,l,L):
+def equations_of_neurons(x: array,x_next: array, s, l, L, beta):
     """
     x: input array
     s: sigma value of quation
@@ -21,7 +21,7 @@ def equations_of_neurons(x: array,s,l,L):
     """
     a = -(2*math.pow(math.pi*s*x[1],2))/(4*math.pow(math.pi,2)*math.pow(s,4)+math.pow(l*L,2))
     first_layer = x[0]*np.exp(a+1j*(math.pi/(l*L)+(2*math.pi*math.pow(s,2)*a)/(l*L)))
-    middle_layer = (1-1j*math.exp())
+    middle_layer = (1-1j*math.exp((-math.pi*math.pow(x-x_next,2))/(2*math.pi*beta**2+1j*l*L)))/math.sqrt(-2j+(l*L/math.pi*beta**2))
 
 # def predict(s, x, X, H, h, bias):
 #     """
