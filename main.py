@@ -33,15 +33,25 @@ def predict(x: array,x_next: array, s, l, L, beta, a_i: float):
     prediction = activation_function(prediction)
     return prediction
 
-def forward_propagation(x,x_next, s, l, L, beta, a_i, layer, y):
+def forward_propagation(x,x_next, s, l, L: array, beta, a_i, y):
 
-    y_pred = predict(x,x_next, s, l, L, beta, a_i, layer)
+    y_pred = predict(x,x_next, s, l, L, beta, a_i)
     loss = (y_pred - y)**2   
     d_loss = 2*(y_pred - y)
     
     return y_pred, loss, d_loss
-def backpropagation(d_loss, layer):
+
+def backpropagation(d_loss, x , x_next,sigma_0, l, L:array):
     partial_derivatives_B = list()
     partial_derivatives_L = list()
+
+    for layer_index in range(len(x)):
+        if layer_index == 0:#first layer
+            param1 = 4*math.pi**2*sigma_0**4
+            param2 = l*L[layer_index]
+            param3 = 2*math.pi*sigma_0**2*x[layer_index]**2
+            equation_for_L = x[layer_index]*(2*param2*param3*l/(param1+param2**2)**2+1j(2*math.pi*sigma_0**2*param3*(param1+3*param2**2)/param2*L[layer_index]*(param1+param2**2)**2-math.pi/(param2*L[layer_index])))*math.exp(-param3/(param1+param2**2)+1j(math.pi/param2-2*math.pi*sigma_0**2*param3/param2*(param1+param2**2)))
+            partial_derivatives_B.append('no result')
+            partial_derivatives_L.append(d_loss*equation_for_L)
 
     return 0
