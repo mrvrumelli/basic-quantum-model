@@ -92,6 +92,3 @@ def backpropagation(d_loss, x: list, sigma_0, l, L:list, beta:list):
             partial_derivatives_L.append(d_loss*equation_for_L*first_layer*layer_value)        
 
     return partial_derivatives_B, partial_derivatives_L
-
-l = [1,2,3,4,5]
-print(l**2)
