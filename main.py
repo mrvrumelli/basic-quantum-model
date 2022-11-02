@@ -1,7 +1,7 @@
 from array import array
 from asyncio import streams
 from distutils.command.build_scripts import first_line_re
-from importlib.util import LazyLoader
+from xmlrpc.client import Boolean
 import numpy as np
 import pandas as pd
 import math
@@ -14,37 +14,51 @@ def activation_function(prediction):
     """ 
     return pow(abs(np.exp(prediction)),2)
 
-def predict(x: list,x_next: list, s, l, L, beta, a_i: float):
+def predict(x: list, s, l, L: list, beta: list, a_i: float):
     """
     x: input array
     s: sigma value of quation
     l: lamda value of equation
-    L: distance between layers
+    L: distance array between layers
     a_i: last layer last item
     complex # i = j in python (1j)
     """
-    global first_layer, middle_layer, last_layer
+    global first_layer, other_layers, x_next
+
+    x_next = x[2:].append(a_i)
        
     a = -(2*math.pow(math.pi*s*x[1],2))/(4*math.pow(math.pi,2)*math.pow(s,4)+math.pow(l*L,2))
     first_layer = x[0]*np.exp(a+1j*(math.pi/(l*L)+(2*math.pi*math.pow(s,2)*a)/(l*L)))
 
-    middle_layer = (1-1j*math.exp((-math.pi*math.pow(x-x_next,2))/(2*math.pi*beta**2 +1j*l*L)))/math.sqrt(-2j+(l*L/math.pi*beta**2 ))
-
-    last_layer = (1-1j*math.exp((-math.pi*math.pow(x-a_i,2))/(2*math.pi*beta**2 +1j*l*L)))/math.sqrt(-2j+(l*L/math.pi*beta**2 ))
+    try:
+        other_layers = (1-1j*math.exp((-math.pi*math.pow(x[1:]-x_next,2))/(2*math.pi*beta**2 +1j*l*L)))/math.sqrt(-2j+(l*L/math.pi*beta**2 ))
+    except ValueError:
+        print("input length doesn't match with input next!!")
     
-    prediction = first_layer * middle_layer * last_layer
+    prediction = first_layer * other_layers
     prediction = activation_function(prediction)
     return prediction
 
-def forward_propagation(x,x_next, s, l, L: list, beta, a_i, y):
+def forward_propagation(x: list, s, l, L: list, beta: list, a_i, y):
 
-    y_pred = predict(x,x_next, s, l, L, beta, a_i)
+    y_pred = predict(x, s, l, L, beta, a_i)
     loss = (y_pred - y)**2   
     d_loss = 2*(y_pred - y)
     
     return y_pred, loss, d_loss
 
-def backpropagation(d_loss, x , x_next,sigma_0, l, L:list, beta, a_i):
+def calculate_other_layers(before_flag: Boolean, after_flag: Boolean, x: list, layer_index: int, beta: list, L: list):
+    #check if the calculated layer is second and the last one
+    before, after = 1
+    if before_flag:
+        before = (1-1j*math.exp((-math.pi*math.pow(x[1:layer_index]-x_next[1:layer_index],2))/(2*math.pi*beta[1:layer_index]**2 +1j*l*L[1:layer_index])))/math.sqrt(-2j+(l*L[1:layer_index]/math.pi*beta[1:layer_index]**2 ))
+
+    if after_flag:
+        after = (1-1j*math.exp((-math.pi*math.pow(x[layer_index+1:]-x_next[layer_index+1:],2))/(2*math.pi*beta[layer_index+1:]**2 +1j*l*L[layer_index+1:])))/math.sqrt(-2j+(l*L[layer_index+1:]/math.pi*beta[layer_index+1:]**2 ))
+
+    return before * after
+
+def backpropagation(d_loss, x: list, sigma_0, l, L:list, beta:list):
     partial_derivatives_B = list()
     partial_derivatives_L = list()
 
@@ -52,31 +66,32 @@ def backpropagation(d_loss, x , x_next,sigma_0, l, L:list, beta, a_i):
         param1 = 4*math.pi**2*sigma_0**4
         param2 = l*L[layer_index]
         param3 = 2*math.pi*sigma_0**2*x[layer_index]**2
-        param6 = math.pi*beta**2        
+        param6 = math.pi*beta[layer_index]**2   
+        param4 = math.pi*(x[layer_index]-x_next)**2/(2*param6+1j*param2)     
         param5 = math.sqrt(-2j + (param2/param6)) 
 
         if layer_index == 0:#first layer            
             equation_for_L = x[layer_index]*(2*param2*param3*l/(param1+param2**2)**2+1j(2*math.pi*sigma_0**2*param3*(param1+3*param2**2)/param2*L[layer_index]*(param1+param2**2)**2-math.pi/(param2*L[layer_index])))*math.exp(-param3/(param1+param2**2)+1j(math.pi/param2-2*math.pi*sigma_0**2*param3/param2*(param1+param2**2)))
 
             partial_derivatives_B.append('no result')
-            partial_derivatives_L.append(d_loss*equation_for_L*middle_layer*last_layer)
+            partial_derivatives_L.append(d_loss*equation_for_L*other_layers)
         
-        else:
-            if layer_index == len(x):
-                param4 = math.pi*(x[layer_index]-a_i)**2/(2*param6+1j*param2)
-            else:
-                param4 = math.pi*(x[layer_index]-x[last_layer+1])**2/(2*param6+1j*param2)
-            
-            equation_for_B = -2*math.pi*beta*(1-1j)*math.exp(-param4)*param4*param5-param2/(param6)**2
+        else:     
+            equation_for_B = -2*math.pi*beta[layer_index]*(1-1j)*math.exp(-param4)*param4*param5-param2/(param6)**2
             equation_for_L = (1-1j)*math.exp(-param4)*((-1j*l*param4/(2*param6-1j*param2)**2)*(2j+param2/param6)-(l/2*param6*(2j+param2/param6)**(1./3.)))
 
-            if layer_index == len(x):
-                partial_derivatives_B.append(d_loss*equation_for_B*first_layer*middle_layer)
-                partial_derivatives_L.append(d_loss*equation_for_L*first_layer*middle_layer)
+            layer_value = 1
+            if layer_index == 1:
+                layer_value = calculate_other_layers(False, True, x,layer_index, beta, L)
+            elif layer_index == len(x):
+                layer_value = calculate_other_layers(True, False, x,layer_index, beta, L)
             else:
-                ml_before = (1-1j*math.exp((-math.pi*math.pow(x[:layer_index]-x_next[:layer_index],2))/(2*math.pi*beta**2 +1j*l*L)))/math.sqrt(-2j+(l*L/math.pi*beta**2 ))
-                ml_after = (1-1j*math.exp((-math.pi*math.pow(x[layer_index+1:]-x_next[layer_index+1:],2))/(2*math.pi*beta**2 +1j*l*L)))/math.sqrt(-2j+(l*L/math.pi*beta**2 ))
-                partial_derivatives_B.append(d_loss*equation_for_B*first_layer*middle_layer*ml_before*ml_after)
-                partial_derivatives_L.append(d_loss*equation_for_L*first_layer*middle_layer*ml_before*ml_after)        
+                layer_value = calculate_other_layers(True, True), x,layer_index, beta, L
+
+            partial_derivatives_B.append(d_loss*equation_for_B*first_layer*layer_value)
+            partial_derivatives_L.append(d_loss*equation_for_L*first_layer*layer_value)        
 
     return partial_derivatives_B, partial_derivatives_L
+
+l = [1,2,3,4,5]
+print(l**2)
