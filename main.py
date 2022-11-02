@@ -8,6 +8,7 @@ import math
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 
+#First layer doesn't have beta value, it is assumed that beta list begin with value that represent there is no value in first index(like - or x)
 def activation_function(prediction):
     """
     parameter: prediction output
@@ -26,16 +27,19 @@ def predict(x: list, s, l, L: list, beta: list, a_i: float):
     global first_layer, other_layers, x_next
 
     x_next = x[2:].append(a_i)
-       
-    a = -(2*math.pow(math.pi*s*x[1],2))/(4*math.pow(math.pi,2)*math.pow(s,4)+math.pow(l*L,2))
-    first_layer = x[0]*np.exp(a+1j*(math.pi/(l*L)+(2*math.pi*math.pow(s,2)*a)/(l*L)))
 
-    try:
-        other_layers = (1-1j*math.exp((-math.pi*math.pow(x[1:]-x_next,2))/(2*math.pi*beta**2 +1j*l*L)))/math.sqrt(-2j+(l*L/math.pi*beta**2 ))
-    except ValueError:
-        print("input length doesn't match with input next!!")
-    
-    prediction = first_layer * other_layers
+    a = -(2*math.pow(math.pi*s*x[1],2))/(4*math.pow(math.pi,2)*math.pow(s,4)+math.pow(l*L[0],2))
+    first_layer = x[0]*np.exp(a+1j*(math.pi/(l*L[0])+(2*math.pi*math.pow(s,2)*a)/(l*L[0])))
+    prediction = first_layer
+
+    for layer_index in range(1,len(x)):
+        try:
+            other_layers = (1-1j*math.exp((-math.pi*math.pow(x[layer_index]-x_next[layer_index],2))/(2*math.pi*beta[layer_index]**2 +1j*l*L[layer_index])))/math.sqrt(-2j+(l*L[layer_index]/math.pi*beta[layer_index]**2 ))
+        except ValueError:
+            print("input length doesn't match with input next!!")
+        
+        prediction = prediction * other_layers
+
     prediction = activation_function(prediction)
     return prediction
 
@@ -47,14 +51,16 @@ def forward_propagation(x: list, s, l, L: list, beta: list, a_i, y):
     
     return y_pred, loss, d_loss
 
-def calculate_other_layers(before_flag: Boolean, after_flag: Boolean, x: list, layer_index: int, beta: list, L: list):
-    #check if the calculated layer is second and the last one
+def calculate_other_layers(before_flag: Boolean, after_flag: Boolean, x: list, layer_index: int, beta: list, L: list, l):
+    #check if the calculated layer is second or the last one
     before, after = 1
     if before_flag:
-        before = (1-1j*math.exp((-math.pi*math.pow(x[1:layer_index]-x_next[1:layer_index],2))/(2*math.pi*beta[1:layer_index]**2 +1j*l*L[1:layer_index])))/math.sqrt(-2j+(l*L[1:layer_index]/math.pi*beta[1:layer_index]**2 ))
+        for index in range(1,layer_index):
+            before = (1-1j*math.exp((-math.pi*math.pow(x[index]-x_next[index],2))/(2*math.pi*beta[index]**2 +1j*l*L[index])))/math.sqrt(-2j+(l*L[index]/math.pi*beta[index]**2 ))
 
     if after_flag:
-        after = (1-1j*math.exp((-math.pi*math.pow(x[layer_index+1:]-x_next[layer_index+1:],2))/(2*math.pi*beta[layer_index+1:]**2 +1j*l*L[layer_index+1:])))/math.sqrt(-2j+(l*L[layer_index+1:]/math.pi*beta[layer_index+1:]**2 ))
+        for index in range(layer_index+1, len(x)):
+            after = (1-1j*math.exp((-math.pi*math.pow(x[index]-x_next[index],2))/(2*math.pi*beta[index]**2 +1j*l*L[index])))/math.sqrt(-2j+(l*L[index]/math.pi*beta[index]**2 ))
 
     return before * after
 
@@ -82,11 +88,11 @@ def backpropagation(d_loss, x: list, sigma_0, l, L:list, beta:list):
 
             layer_value = 1
             if layer_index == 1:
-                layer_value = calculate_other_layers(False, True, x,layer_index, beta, L)
+                layer_value = calculate_other_layers(False, True, x,layer_index, beta, L, l)
             elif layer_index == len(x):
-                layer_value = calculate_other_layers(True, False, x,layer_index, beta, L)
+                layer_value = calculate_other_layers(True, False, x,layer_index, beta, L, l)
             else:
-                layer_value = calculate_other_layers(True, True), x,layer_index, beta, L
+                layer_value = calculate_other_layers(True, True, x,layer_index, beta, L, l)
 
             partial_derivatives_B.append(d_loss*equation_for_B*first_layer*layer_value)
             partial_derivatives_L.append(d_loss*equation_for_L*first_layer*layer_value)        
