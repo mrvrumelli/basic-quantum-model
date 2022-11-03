@@ -43,7 +43,7 @@ def predict(x: list, s, l, L: list, beta: list, a_i: float):
     prediction = activation_function(prediction)
     return prediction
 
-def forward_propagation(x: list, s, l, L: list, beta: list, a_i, y):
+def forward_propagation(x: list, y, s, l, L: list, beta: list, a_i):
 
     y_pred = predict(x, s, l, L, beta, a_i)
     loss = (y_pred - y)**2   
@@ -98,3 +98,42 @@ def backpropagation(d_loss, x: list, sigma_0, l, L:list, beta:list):
             partial_derivatives_L.append(d_loss*equation_for_L*first_layer*layer_value)        
 
     return partial_derivatives_B, partial_derivatives_L
+
+def optimize_perceptron(x, y, learning_rate, s, l, L, beta, a_i, sigma_0):
+    epoch = 0
+    error = 999
+    L_values = np.random.rand(x.shape[1])
+    B_values = np.random.rand(x.shape[1])
+
+    errors = list()
+    epochs = list()
+
+    while (epoch <= 1000) and (error > 9e-4):
+        
+        loss_ = 0
+        # Loop over every data point
+        for i in range(x.shape[0]):
+            
+            # Forward Propagation on each data point
+            y_pred, loss, d_loss = forward_propagation(x[i], y[i], s, l, L, beta, a_i)
+
+            # Backpropagation
+            partial_derivates = backpropagation(d_loss, x[i], sigma_0, l, L, beta)            
+            
+            B_values = B_values - (learning_rate * np.array(partial_derivates[0]))
+            L_values = L_values - (learning_rate * np.array(partial_derivates[1]))
+
+        # Evaluate the results
+        for index, feature_value_test in enumerate(x):
+            y_pred, loss, d_loss = forward_propagation(feature_value_test, y[index], s, l, L_values, B_values, a_i)
+            loss_ += loss
+
+        errors.append(loss_/len(x))
+        epochs.append(epoch)
+        error = errors[-1]
+        epoch += 1
+
+        print('Epoch {}. loss: {}'.format(epoch, errors[-1]))
+
+    
+    return B_values, L_values, errors
