@@ -1,4 +1,5 @@
 import math, cmath
+from sklearn.preprocessing import normalize
 
 SIGMA = 2*math.pow(10,-3)
 LMBDA = 635*math.pow(10,-9)
@@ -42,7 +43,7 @@ def one_layer(L_01:float, L_12:float, centerpos1:list, delta_a_j:float,
 
     a_i=[]
     y_pred = []
-    for i in range(-50,51):
+    for i in range(-100,101):
         a_i.append(i*delta_a_j*math.pow(10,3))  
         y_pred.append(activation_function(calculate_y_pred_for_one_layer(L_01, 
             L_12, centerpos1, i*delta_a_j, beta1)))
@@ -54,7 +55,7 @@ def two_layers(L_01:float, L_12:float, L_23:float, centerpos1:list,
 
     a_i=[]
     y_pred = []
-    for i in range(-50,51): 
+    for i in range(-100,101): 
         a_i.append(i*delta_a_j*math.pow(10,3))  
         result = 0
         first_layer = []
@@ -66,5 +67,6 @@ def two_layers(L_01:float, L_12:float, L_23:float, centerpos1:list,
             result += first_layer_result * second_layer_result
             first_layer.append(activation_function(first_layer_result))
         y_pred.append(activation_function(result))
+        result = normalize([y_pred], norm="max")
     
-    return a_i, y_pred, sum(y_pred)*delta_a_j
+    return a_i, result[0], sum(y_pred)*delta_a_j
