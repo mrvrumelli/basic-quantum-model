@@ -1,8 +1,9 @@
 import math, cmath
 from sklearn.preprocessing import normalize
 
-SIGMA = 2*math.pow(10,-3)
-LMBDA = 635*math.pow(10,-9)
+S = 2*math.pow(10,-3)
+L = 635*math.pow(10,-9)
+PI = math.pi
 
 def activation_function(prediction:float):
     """
@@ -11,17 +12,67 @@ def activation_function(prediction:float):
     return math.pow(abs(prediction),2)
 
 def first(L_01:float, x:float):
-    return ((2*math.pow(math.pi,1/2)*SIGMA)/\
-    ((LMBDA*L_01)-(2*1j*math.pi*(SIGMA**2))))**(1/2)*\
-    cmath.exp((-2*(math.pi**2)*(SIGMA**2)*(x**2))/(4*(math.pi**2)*\
-    SIGMA**4+math.pow(LMBDA*L_01,2))+1j*x**2*(math.pi/LMBDA*L_01-\
-    (4*(math.pi**3)*SIGMA**4/LMBDA*L_01*(4*(math.pi**2)*(SIGMA**4)+\
-    math.pow(LMBDA*L_01,2))))-1j*math.pi/4)
+    return ((2*math.pow(PI,1/2)*S)/\
+    ((L*L_01)-(2*1j*PI*(S**2))))**(1/2)*\
+    cmath.exp((-2*(PI**2)*(S**2)*(x**2))/(4*(PI**2)*\
+    S**4+math.pow(L*L_01,2))+1j*x**2*(PI/L*L_01-\
+    (4*(PI**3)*S**4/L*L_01*(4*(PI**2)*(S**4)+\
+    math.pow(L*L_01,2))))-1j*PI/4)
+
+def first_conj(L_01:float, x:float):
+    return ((2*math.pow(PI,1/2)*S)/\
+    ((L*L_01)+(2j*PI*(S**2))))**(1/2)*\
+    cmath.exp((-2*(PI**2)*(S**2)*(x**2))/(4*(PI**2)*\
+    S**4+math.pow(L*L_01,2))-1j*x**2*(PI/L*L_01-\
+    (4*(PI**3)*S**4/L*L_01*(4*(PI**2)*(S**4)+\
+    math.pow(L*L_01,2))))+1j*PI/4)
 
 def other(x:float, param:float, L_12:float, beta:float):
-    return (1-1j)*cmath.exp((-1*math.pi*math.pow((x-param),2))/\
-        ((2*math.pi*math.pow(beta,2))+(1j*LMBDA*L_12)))/((-2*1j)+\
-            ((LMBDA*L_12)/(math.pi*math.pow(beta,2))))**(1/2)
+    return (1-1j)*cmath.exp((-1*PI*math.pow((x-param),2))/\
+        ((2*PI*math.pow(beta,2))+(1j*L*L_12)))/((-2j)+\
+            ((L*L_12)/(PI*math.pow(beta,2))))**(1/2)
+
+def other_conj(x:float, param:float, L_12:float, beta:float):
+    return (1+1j)*cmath.exp((-1*PI*math.pow((x-param),2))/\
+        ((2*PI*math.pow(beta,2))-(1j*L*L_12)))/(2j+\
+            ((L*L_12)/(PI*math.pow(beta,2))))**(1/2)
+
+def first_derivative(L_01:float, x:float):
+    first_L = -(((-1)**(3/4)*cmath.exp(PI*x**2*((1j*L_01*L/4*PI**2*S**4+\
+                (L_01*L)**2)-(2*PI*S**2/4*PI*S**4+(L_01*L)**2)))*PI**(1/4)*S*L*\
+                (1+2*1j*x**2*(2*PI*S**2+1j*L_01*L)*((4*L_01*(PI*S)**2*L/(4*PI*\
+                S**2+(L_01*L)**2)**2)+(1j*(4*PI**3*S**4-L_01**2*PI*L**2)/(4*\
+                PI**2*S**4+(L_01*L)**2)**2))))/(math.sqrt(2)*(2*PI*S**2+1j*L_01\
+                *S)**2*cmath.sqrt(S/-2j*PI*S**2+L_01*L)))
+    
+    first_conj_L = (cmath.exp(-(PI*x**2*(8*PI**3*S**6+1j*(L_01*L)**3+2*L_01*PI*\
+                    S**2*L*(2J*S**2+L_01*L)))/((4*PI*S**4+(L_01*L)**2)*(4*PI*\
+                    S**2**4+(L_01*L)**2)))*-PI**(1/4)*S*L*(1-2*1j*x**2*(2*PI*\
+                    S**2-1j*L_01*L)*((4*L_01*(PI*S)**2*L/(4*PI*S**2+\
+                    (L_01*L)**2)**2)+(1j*(-4*PI**3*S**4+L_01**2*PI*L**2)/(4*\
+                    PI**2*S**4+(L_01*L)**2)**2))))/(math.sqrt(2)*(2*PI*S**2-1J*\
+                    L_01*L)**2*math.sqrt(S/2j*PI*S**2+L_01*L))
+    
+    return first_L, first_conj_L
+    
+def other_dervivative(x1, x2, L_, b):
+    other_L = -((((1/2)+(1j/2))*cmath.exp(-(PI*(x1-x2)**2)/(2*b*PI+1j*L*L_))*L*\
+                (2*PI*(b+x1-x2)*(b-x1+x2)+1j*L*L_))/((2*b**2*PI+1j*L*L_)**2*\
+                (-2j+(L*L_/b**2*PI))**(1/2)))
+    
+    other_B = -(((1-1j)*cmath.exp(-(PI*(x1-x2)**2)/(2*b*PI+1j*L*L_))*\
+                ((L*L_)**2-2*b**2*PI*(2*PI*(x1-x2)**2+1j*L_*L)))/(b*(2*b**2*PI+\
+                1j*L*L_)**2*(-2j+(L*L_/b**2*PI))**(1/2)))
+
+    other_conj_L = (((1/2)+(1j/2))*cmath.exp(-(PI*(x1-x2)**2)/(2*b*PI-1j*L*\
+                    L_))*L*(2*1j*PI*(b+x1-x2)*(b-x1+x2)+L*L_))/((2*b**2*PI-1j*\
+                    L*L_)**2*(2j+(L*L_/b**2*PI))**(1/2))
+    
+    other_conj_B = ((1+1j)*cmath.exp(-(PI*(x1-x2)**2)/(2*b*PI-1j*L*L_))*(\
+                    (-L*L_)**2-2*b**2*PI*(2*PI*(x1-x2)**2-1j*L_*L)))/(b*(2*b**2\
+                    *PI+1j*L*L_)**2*(2j+(L*L_/b**2*PI))**(1/2))
+    
+    return other_L, other_B, other_conj_L, other_conj_B
     
 def equation_one_layer(L_01:float, L_12:float, x:float, a_j:float, beta:float):
     g_0 = first(L_01, x)

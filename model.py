@@ -79,6 +79,40 @@ beta2 = result_df.loc[result_df['LayerIndex'] == 1,'Beta']
 a_i, y_pred, energy = eq.two_layers(L_01, L_12, L_23, centerpos1, 
     centerpos2, delta_a_j, beta1, beta2)
 
+# import matplotlib.pyplot
+# matplotlib.pyplot.plot(a_i,y_pred)
+# matplotlib.pyplot.show()
+
+# Calculate difference between target and predict
+y_target = [0.00000001]*201
+for i in range(201):
+    if i >19 and i<40:
+        y_target[i] = 1
+y_target = np.array(y_target)
+
+y_target9 = [0.00000001]*201
+for i in range(201):
+    if i >80:
+        y_target9[i] = 1
+y_target9 = np.array(y_target9)
+
+def kl_divergence(p, q):
+    """
+    Calculates the KL divergence of two distributions.
+    """
+    return np.sum(np.where(p != 0, p * np.log(p / q), 0))
+
+kl = kl_divergence(y_pred,y_target)
+kl9 = kl_divergence(y_pred,y_target9)
+# Print the result
+print("KL divergence:", kl)
+print("KL divergence:", kl9)
+def calculate_error(y_pred, y_target):    
+        return np.sum(np.square(y_target - y_pred))/ len(y_target)
+
+print(calculate_error(y_pred, y_target))
+print(calculate_error(y_pred, y_target9))
+
 import matplotlib.pyplot
 matplotlib.pyplot.plot(a_i,y_pred)
 matplotlib.pyplot.show()
