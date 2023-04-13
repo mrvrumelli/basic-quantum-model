@@ -1,83 +1,96 @@
-import math, cmath
+import sympy as sp
 from sklearn.preprocessing import normalize
 
-S = 2*math.pow(10,-3)
-L = 635*math.pow(10,-9)
-PI = math.pi
+S = 2 * 10**(-3)
+L = 635 * 10**(-9)
+PI = sp.pi
+
+x, x_next, beta, L_01, L_12 = sp.symbols("x x_next beta L_01 L_12", real=True)
 
 def activation_function(prediction:float):
     """
-    parameter: prediction output
+    x_nexteter: prediction output
     """ 
-    return math.pow(abs(prediction),2)
+    return abs(prediction)**2
 
-def first(L_01:float, x:float):
-    return ((2*math.pow(PI,1/2)*S)/\
-    ((L*L_01)-(2*1j*PI*(S**2))))**(1/2)*\
-    cmath.exp((-2*(PI**2)*(S**2)*(x**2))/(4*(PI**2)*\
-    S**4+math.pow(L*L_01,2))+1j*x**2*(PI/L*L_01-\
-    (4*(PI**3)*S**4/L*L_01*(4*(PI**2)*(S**4)+\
-    math.pow(L*L_01,2))))-1j*PI/4)
+def first(L_01: float, x: float, conjugate: bool = False) -> complex:
+    # Numerator and denominator for the root term calculation
+    numerator = 2 * sp.sqrt(PI) * S
+    denominator = (L * L_01) - (2 * 1j * PI * (S**2))
 
-def first_conj(L_01:float, x:float):
-    return ((2*math.pow(PI,1/2)*S)/\
-    ((L*L_01)+(2j*PI*(S**2))))**(1/2)*\
-    cmath.exp((-2*(PI**2)*(S**2)*(x**2))/(4*(PI**2)*\
-    S**4+math.pow(L*L_01,2))-1j*x**2*(PI/L*L_01-\
-    (4*(PI**3)*S**4/L*L_01*(4*(PI**2)*(S**4)+\
-    math.pow(L*L_01,2))))+1j*PI/4)
+    # Exponential term calculation
+    exponential_term = sp.exp(
+        (-2 * (PI**2) * (S**2) * (x**2)) / (4 * (PI**2) * S**4 
+        + (L * L_01)**2)+ 1j * x**2 * (PI / L * L_01 
+        - (4 * (PI**3) * S**4 / L * L_01 * (4 * (PI**2) * (S**4) 
+        + (L * L_01)**2)))- 1j * PI / 4)
+    
+    # Update deminator and exponential_term with their conjugate
+    if conjugate:
+        denominator = (L * L_01) + (2 * 1j * PI * (S**2))
+        exponential_term = sp.exp(
+            (-2 * (PI**2) * (S**2) * (x**2)) / (4 * (PI**2) * S**4 
+            + (L * L_01)**2)- 1j * x**2 * (PI / L * L_01 
+            - (4 * (PI**3) * S**4 / L * L_01 * (4 * (PI**2) * (S**4) 
+            + (L * L_01)**2)))+ 1j * PI / 4)
 
-def other(x:float, param:float, L_12:float, beta:float):
-    return (1-1j)*cmath.exp((-1*PI*math.pow((x-param),2))/\
-        ((2*PI*math.pow(beta,2))+(1j*L*L_12)))/((-2j)+\
-            ((L*L_12)/(PI*math.pow(beta,2))))**(1/2)
+    # Calculate the root term
+    root_term = sp.sqrt(numerator / denominator)
 
-def other_conj(x:float, param:float, L_12:float, beta:float):
-    return (1+1j)*cmath.exp((-1*PI*math.pow((x-param),2))/\
-        ((2*PI*math.pow(beta,2))-(1j*L*L_12)))/(2j+\
-            ((L*L_12)/(PI*math.pow(beta,2))))**(1/2)
+    # Return value of calculation
+    return (root_term * exponential_term).evalf()
 
-def first_derivative(L_01:float, x:float):
-    first_L = -(((-1)**(3/4)*cmath.exp(PI*x**2*((1j*L_01*L/4*PI**2*S**4+\
-                (L_01*L)**2)-(2*PI*S**2/4*PI*S**4+(L_01*L)**2)))*PI**(1/4)*S*L*\
-                (1+2*1j*x**2*(2*PI*S**2+1j*L_01*L)*((4*L_01*(PI*S)**2*L/(4*PI*\
-                S**2+(L_01*L)**2)**2)+(1j*(4*PI**3*S**4-L_01**2*PI*L**2)/(4*\
-                PI**2*S**4+(L_01*L)**2)**2))))/(math.sqrt(2)*(2*PI*S**2+1j*L_01\
-                *S)**2*cmath.sqrt(S/-2j*PI*S**2+L_01*L)))
-    
-    first_conj_L = (cmath.exp(-(PI*x**2*(8*PI**3*S**6+1j*(L_01*L)**3+2*L_01*PI*\
-                    S**2*L*(2J*S**2+L_01*L)))/((4*PI*S**4+(L_01*L)**2)*(4*PI*\
-                    S**2**4+(L_01*L)**2)))*-PI**(1/4)*S*L*(1-2*1j*x**2*(2*PI*\
-                    S**2-1j*L_01*L)*((4*L_01*(PI*S)**2*L/(4*PI*S**2+\
-                    (L_01*L)**2)**2)+(1j*(-4*PI**3*S**4+L_01**2*PI*L**2)/(4*\
-                    PI**2*S**4+(L_01*L)**2)**2))))/(math.sqrt(2)*(2*PI*S**2-1J*\
-                    L_01*L)**2*math.sqrt(S/2j*PI*S**2+L_01*L))
-    
-    return first_L, first_conj_L
-    
-def other_dervivative(x1, x2, L_, b):
-    other_L = -((((1/2)+(1j/2))*cmath.exp(-(PI*(x1-x2)**2)/(2*b*PI+1j*L*L_))*L*\
-                (2*PI*(b+x1-x2)*(b-x1+x2)+1j*L*L_))/((2*b**2*PI+1j*L*L_)**2*\
-                (-2j+(L*L_/b**2*PI))**(1/2)))
-    
-    other_B = -(((1-1j)*cmath.exp(-(PI*(x1-x2)**2)/(2*b*PI+1j*L*L_))*\
-                ((L*L_)**2-2*b**2*PI*(2*PI*(x1-x2)**2+1j*L_*L)))/(b*(2*b**2*PI+\
-                1j*L*L_)**2*(-2j+(L*L_/b**2*PI))**(1/2)))
+def first_derivative(L_01_value: float, x_value: float, 
+                     conjugate: bool = False) -> complex:
+    # Calculate equation from "first" function and take derivative wrt L
+    first_derivative_L = sp.diff(first(L_01, x, conjugate), L_01)
 
-    other_conj_L = (((1/2)+(1j/2))*cmath.exp(-(PI*(x1-x2)**2)/(2*b*PI-1j*L*\
-                    L_))*L*(2*1j*PI*(b+x1-x2)*(b-x1+x2)+L*L_))/((2*b**2*PI-1j*\
-                    L*L_)**2*(2j+(L*L_/b**2*PI))**(1/2))
+    # Assign values to derivative equation result  
+    first_derivative_value = first_derivative_L.subs({L_01: L_01_value,
+                                                       x: x_value})
+
+    # Return value of derivative
+    return first_derivative_value.evalf()
+
+def other(x:float, x_next:float, L_12:float, beta:float, 
+          conjugate:bool = False) -> complex:
+    numerator = (1 - 1j) * sp.exp((-1 * PI * (x - x_next)**2) 
+                                  / ((2 * PI * beta**2) + (1j * L * L_12)))
+    denominator = (-2j) + ((L * L_12) / (PI * beta**2))
     
-    other_conj_B = ((1+1j)*cmath.exp(-(PI*(x1-x2)**2)/(2*b*PI-1j*L*L_))*(\
-                    (-L*L_)**2-2*b**2*PI*(2*PI*(x1-x2)**2-1j*L_*L)))/(b*(2*b**2\
-                    *PI+1j*L*L_)**2*(2j+(L*L_/b**2*PI))**(1/2))
+    if conjugate:
+        numerator = (1 + 1j) * sp.exp((-1 * PI * (x - x_next)**2) 
+                                      / ((2 * PI * beta**2) - (1j * L * L_12)))
+        denominator = 2j + ((L * L_12) / (PI * beta**2))
     
-    return other_L, other_B, other_conj_L, other_conj_B
+    return sp.sqrt(numerator / denominator).evalf()
+
+def other_derivative(x_value:float, x_next_value:float, L_12_value:float, 
+                     beta_value:float, conjugate:bool = False, 
+                     derivative_L:bool = True) -> complex:
     
+    if derivative_L:
+        other_derivative_L = sp.diff(other(x, x_next, L_12, beta, 
+                                           conjugate), L_12)
+        other_derivative_value = other_derivative_L.subs({x: x_value, 
+                                                          x_next: x_next_value, 
+                                                          L_12: L_12_value, 
+                                                          beta: beta_value})
+    else:
+        other_derivative_B = sp.diff(other(x, x_next, L_12, beta, 
+                                           conjugate), beta)
+        other_derivative_value = other_derivative_B.subs({x: x_value, 
+                                                          x_next: x_next_value, 
+                                                          L_12: L_12_value, 
+                                                          beta: beta_value})
+      
+    return other_derivative_value.evalf()
+
 def equation_one_layer(L_01:float, L_12:float, x:float, a_j:float, beta:float):
     g_0 = first(L_01, x)
     g_1 = other(x, a_j, L_12, beta)
-    return g_0*g_1
+
+    return g_0 * g_1
 
 def calculate_y_pred_for_one_layer(L_01:list, L_12:list, centerpos1:list, 
     a_j:float, beta:list):
@@ -95,7 +108,7 @@ def one_layer(L_01:float, L_12:float, centerpos1:list, delta_a_j:float,
     a_i=[]
     y_pred = []
     for i in range(-100,101):
-        a_i.append(i*delta_a_j*math.pow(10,3))  
+        a_i.append(i * delta_a_j * 10**3)  
         y_pred.append(activation_function(calculate_y_pred_for_one_layer(L_01, 
             L_12, centerpos1, i*delta_a_j, beta1)))
 
@@ -107,16 +120,17 @@ def two_layers(L_01:float, L_12:float, L_23:float, centerpos1:list,
     a_i=[]
     y_pred = []
     for i in range(-100,101): 
-        a_i.append(i*delta_a_j*math.pow(10,3))  
+        a_i.append(i * delta_a_j * 10**3)  
         result = 0
         first_layer = []
         for j in range(len(centerpos2)):
             first_layer_result = calculate_y_pred_for_one_layer( 
                 L_01, L_12, centerpos1, centerpos2[j], beta1)
-            second_layer_result = other(centerpos2[j], i*delta_a_j,  L_23, 
+            second_layer_result = other(centerpos2[j], i * delta_a_j,  L_23, 
                 beta2[j])
             result += first_layer_result * second_layer_result
             first_layer.append(activation_function(first_layer_result))
+
         y_pred.append(activation_function(result))
         result = normalize([y_pred], norm="max")
     
