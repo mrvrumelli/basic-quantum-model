@@ -75,44 +75,82 @@ delta_a_j:float = math.pow(10,-5)
 beta1 = result_df.loc[result_df['LayerIndex'] == 1,'Beta']
 beta2 = result_df.loc[result_df['LayerIndex'] == 1,'Beta']
 
-#forward propagation calculation
-a_i, y_pred, energy = eq.two_layers(L_01, L_12, L_23, centerpos1, 
-    centerpos2, delta_a_j, beta1, beta2)
-
-# import matplotlib.pyplot
-# matplotlib.pyplot.plot(a_i,y_pred)
-# matplotlib.pyplot.show()
-
-# Calculate difference between target and predict
-y_target = [0.00000001]*201
-for i in range(201):
-    if i >19 and i<40:
-        y_target[i] = 1
-y_target = np.array(y_target)
-
-y_target9 = [0.00000001]*201
-for i in range(201):
-    if i >80:
-        y_target9[i] = 1
-y_target9 = np.array(y_target9)
-
 def kl_divergence(p, q):
     """
     Calculates the KL divergence of two distributions.
     """
     return np.sum(np.where(p != 0, p * np.log(p / q), 0))
 
-kl = kl_divergence(y_pred,y_target)
-kl9 = kl_divergence(y_pred,y_target9)
+#kl = kl_divergence(y_pred,y_target)
+#kl9 = kl_divergence(y_pred,y_target9)
 # Print the result
-print("KL divergence:", kl)
-print("KL divergence:", kl9)
+#print("KL divergence:", kl)
+#print("KL divergence:", kl9)
 def calculate_error(y_pred, y_target):    
         return np.sum(np.square(y_target - y_pred))/ len(y_target)
 
-print(calculate_error(y_pred, y_target))
-print(calculate_error(y_pred, y_target9))
+#print(calculate_error(y_pred, y_target))
 
-import matplotlib.pyplot
-matplotlib.pyplot.plot(a_i,y_pred)
-matplotlib.pyplot.show()
+def test(L_01, L_12, L_23, centerpos1:list, 
+        centerpos2:list, delta_a_j, beta1, beta2):
+    #forward propagation calculation
+    a_i, y_pred, energy = eq.forward_prop(centerpos1, centerpos2, delta_a_j, L_01, L_12, L_23, beta1, beta2)
+
+    # Calculate difference between target and predict
+    y_target = [0.00000001]*201
+    for i in range(201):
+        if i >19 and i<40:
+            y_target[i] = 1
+    y_target = np.array(y_target)
+
+    loss = calculate_error(y_pred, y_target)  
+    d_loss_B1 = 2*np.sum((y_target - y_pred)* eq.derivative_for_L_12_and_B_1(centerpos1,centerpos2, L_01,L_12,beta1,False))/len(y_target)
+    d_loss_B2 = 2*np.sum((y_target - y_pred)* eq.derivative_for_L_23_and_B_2(centerpos1,centerpos2,delta_a_j, L_01,L_12,L_23,beta1,beta2,False))/len(y_target)
+    d_loss_L01 = 2*np.sum((y_target - y_pred)* eq.derivative_for_L_01(centerpos1,L_01))/len(y_target)
+    d_loss_L12 = 2*np.sum((y_target - y_pred)* eq.derivative_for_L_12_and_B_1(centerpos1,centerpos2, L_01,L_12,beta1,True))/len(y_target)
+    d_loss_L23 = 2*np.sum((y_target - y_pred)* eq.derivative_for_L_23_and_B_2(centerpos1,centerpos2,delta_a_j, L_01,L_12,L_23,beta1,beta2,True))/len(y_target)
+    
+    # d_loss variables represent equations with derivative of parameters
+    p_derivatives_B1 = [d_loss_B1]
+    p_derivatives_L01 = [d_loss_L01]
+    p_derivatives_B2 = [d_loss_B2]
+    p_derivatives_L12 = [d_loss_L12]
+    p_derivatives_L23 = [d_loss_L23]
+
+    return  p_derivatives_B1, p_derivatives_L01, p_derivatives_B2, p_derivatives_L12, p_derivatives_L23, loss
+
+def optimize(L_01, L_12, L_23, centerpos1, centerpos2, delta_a_j, beta1, beta2, learning_rate):
+    epoch = 0
+    error = 999
+
+    errors = list()
+    epochs = list()
+
+    while (epoch <= 1000) and (error > 9e-4):
+        
+        loss_ = 0
+        p_derivatives = test(L_01, L_12, L_23, centerpos1, centerpos2, delta_a_j, beta1, beta2)           
+        
+        L_01 = L_01 - (learning_rate * np.array(p_derivatives[1]))
+        L_12 = L_12 - (learning_rate * np.array(p_derivatives[3]))
+        L_23 = L_23 - (learning_rate * np.array(p_derivatives[4]))
+        beta1 = beta1 - (learning_rate * np.array(p_derivatives[0]))
+        beta2 = beta2 - (learning_rate * np.array(p_derivatives[2]))
+
+            # Evaluate the results
+        #for index, feature_value_test in enumerate(TOTALPIXEL):
+        loss = (learning_rate * np.array(p_derivatives[5]))
+        loss_ += loss
+
+        errors.append(loss_/TOTALPIXEL)
+        epochs.append(epoch)
+        error = errors[-1]
+        epoch += 1
+
+        print('Epoch {}. loss: {}'.format(epoch, errors[-1]))
+
+    
+    return errors
+
+
+print(optimize(L_01, L_12, L_23, centerpos1, centerpos2, delta_a_j, beta1, beta2, 0.1))

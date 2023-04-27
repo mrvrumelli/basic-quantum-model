@@ -1,4 +1,5 @@
 import math, cmath
+import numpy as np
 from sklearn.preprocessing import normalize
 
 S = 2 * 10**(-3) # sigma value
@@ -59,6 +60,8 @@ def other_layers_equation_values(centerpos1:float, centerpos2:float, L_value:flo
     beta: Slit width
     conjugate: Check equation is conjugate form or not
     """
+    if type(centerpos1) == list or type(centerpos2) == list:
+         a = 5
     numerator = (1 - 1j) * cmath.exp((-1 * PI * (centerpos1 - centerpos2)**2) 
                                   / ((2 * PI * beta**2) + (1j * Lambda_ * L_value)))
     denominator = (-2j) + ((Lambda_ * L_value) / (PI * beta**2))
@@ -157,7 +160,7 @@ def first_layer_values(centerpos1:float, L_01: float, conjugate:bool = False, de
     return g_0
 
 def other_layer_values(centerpos1:float, centerpos2:float, L_value:float, beta:float, conjugate:bool = False, derivative:bool = False, derivative_L:bool = True):
-    # Find equation result of secondor last layer propagation as forward or backward   
+    # Find equation result of second or last layer propagation as forward or backward   
     if derivative:
         g_ = other_layers_derivative_value(centerpos1, centerpos2, L_value, beta, conjugate, derivative_L)       
     else: 
@@ -176,7 +179,6 @@ def sum_second(centerpos1:list, centerpos2:float, L_01:float, L_12:float, beta:l
     return result
 
 def forward_prop(centerpos1:list, centerpos2:list, delta_a_j:float, L_01:float, L_12:float, L_23:float, beta1:list, beta2:list, conjugate:bool = False, derivative:bool = False, derivative_L:bool = True):
-    
     a_i=[]
     y_pred = []
     for i in range(-100,101): 
@@ -189,34 +191,42 @@ def forward_prop(centerpos1:list, centerpos2:list, delta_a_j:float, L_01:float, 
             result += first_layer_result * second_layer_result
            
         y_pred.append(activation_function(result))
-        result = normalize([y_pred], norm="max")
+        # if len(y_pred) >2:
+        #     a=5
+        #result = normalize([y_pred], norm="max")
     
-    return a_i, result[0], sum(y_pred)*delta_a_j
+    #return a_i, result[0], sum(y_pred)*delta_a_j
+    return a_i, y_pred, sum(y_pred)*delta_a_j
 
-def derivative_for_L_01(centerpos, L_01):
-    g_0 = first_layer_equation_values(centerpos, L_01) # g_0
-    g_0_conj = first_layer_equation_values(centerpos, L_01, True) # g_0*
-    d_g_0 = first_layer_derivative_value(centerpos, L_01) # g_0'    
-    d_g_0_conj = first_layer_derivative_value(centerpos, L_01, True) # g_0*'
+def derivative_for_L_01(centerpos:list, L_01):
+    d_L_01 = 0
+    for i in range(len(centerpos)):
+        g_0 = first_layer_equation_values(centerpos[i], L_01) # g_0
+        g_0_conj = first_layer_equation_values(centerpos[i], L_01, True) # g_0*
+        d_g_0 = first_layer_derivative_value(centerpos[i], L_01) # g_0'    
+        d_g_0_conj = first_layer_derivative_value(centerpos[i], L_01, True) # g_0*'
 
-    d_L_01 = 2 * (d_g_0 * g_0_conj + g_0 * d_g_0_conj)
+        d_L_01 += 2 * (d_g_0 * g_0_conj + g_0 * d_g_0_conj)
     return d_L_01
 
 def derivative_for_L_12_and_B_1(centerpos1:list, centerpos2:list, L_01:float, L_12:float, beta:list, L:bool = True):
     # False ise ikinci layerdaki beta degeri icin turev aliniyor, true ise L_12 icin turev alinmis oluyor
-    d_sum_g_1 = sum_second(centerpos1, centerpos2, L_01, L_12, beta, False, True, L)
-    g_1_conj = other_layer_values(centerpos1, centerpos2, L_12, beta, True)
-    d_sum_g_1_conj = sum_second(centerpos1, centerpos2, L_01, L_12, beta, True, True, L)
-    g_1 = other_layer_values(centerpos1, centerpos2, L_12, beta)
+    ## BURADA BIRINDE CENTERPOS1 LIST BIRINDE FLOAT ALMISIM 
+    result = 0
+    for i in range(len(centerpos2)): 
+        d_sum_g_1 = sum_second(centerpos1, centerpos2[i], L_01, L_12, beta, False, True, L)
+        g_1_conj = sum_second(centerpos1, centerpos2[i], L_01, L_12, beta, True, False)
+        d_sum_g_1_conj = sum_second(centerpos1, centerpos2[i], L_01, L_12, beta, True, True, L)
+        g_1 = sum_second(centerpos1, centerpos2[i], L_01, L_12, beta)
 
-    result = 2 * (d_sum_g_1 * g_1_conj + d_sum_g_1_conj * g_1)
+        result += 2 * (d_sum_g_1 * g_1_conj + d_sum_g_1_conj * g_1)
     return result
 
 def derivative_for_L_23_and_B_2(centerpos1, centerpos2, delta_a_j, L_01, L_12, L_23, beta1, beta2, L:bool = True):
     d_sum_g_2 = forward_prop(centerpos1, centerpos2, delta_a_j, L_01, L_12, L_23, beta1, beta2, False, True, L)[1]
-    g_2_conj = other_layer_values(centerpos1, centerpos2, L_12, beta2, True)
+    g_2_conj = forward_prop(centerpos1, centerpos2, delta_a_j, L_01, L_12, L_23, beta1, beta2, True, False)[1]
     d_sum_g_2_conj = forward_prop(centerpos1, centerpos2, delta_a_j, L_01, L_12, L_23, beta1, beta2, True, True, L)[1]
-    g_2 = other_layer_values(centerpos1, centerpos2, L_12, beta2)
+    g_2 = forward_prop(centerpos1, centerpos2, delta_a_j, L_01, L_12, L_23, beta1, beta2)[1]
     
-    result = 2 * (d_sum_g_2 * g_2_conj + d_sum_g_2_conj * g_2)
+    result = 2 * (d_sum_g_2[1] * g_2_conj[1] + d_sum_g_2_conj[1] * g_2[1])
     return result
