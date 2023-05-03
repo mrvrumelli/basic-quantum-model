@@ -206,7 +206,7 @@ def derivative_for_L_01(centerpos:list, L_01):
         d_g_0 = first_layer_derivative_value(centerpos[i], L_01) # g_0'    
         d_g_0_conj = first_layer_derivative_value(centerpos[i], L_01, True) # g_0*'
 
-        d_L_01 += 2 * (d_g_0 * g_0_conj + g_0 * d_g_0_conj)
+        d_L_01 += d_g_0 * g_0_conj + g_0 * d_g_0_conj
     return d_L_01
 
 def derivative_for_L_12_and_B_1(centerpos1:list, centerpos2:list, L_01:float, L_12:float, beta:list, L:bool = True):
@@ -219,7 +219,7 @@ def derivative_for_L_12_and_B_1(centerpos1:list, centerpos2:list, L_01:float, L_
         d_sum_g_1_conj = sum_second(centerpos1, centerpos2[i], L_01, L_12, beta, True, True, L)
         g_1 = sum_second(centerpos1, centerpos2[i], L_01, L_12, beta)
 
-        result += 2 * (d_sum_g_1 * g_1_conj + d_sum_g_1_conj * g_1)
+        result += d_sum_g_1 * g_1_conj + d_sum_g_1_conj * g_1
     return result
 
 def derivative_for_L_23_and_B_2(centerpos1, centerpos2, delta_a_j, L_01, L_12, L_23, beta1, beta2, L:bool = True):
@@ -228,5 +228,5 @@ def derivative_for_L_23_and_B_2(centerpos1, centerpos2, delta_a_j, L_01, L_12, L
     d_sum_g_2_conj = forward_prop(centerpos1, centerpos2, delta_a_j, L_01, L_12, L_23, beta1, beta2, True, True, L)[1]
     g_2 = forward_prop(centerpos1, centerpos2, delta_a_j, L_01, L_12, L_23, beta1, beta2)[1]
     
-    result = 2 * (d_sum_g_2[1] * g_2_conj[1] + d_sum_g_2_conj[1] * g_2[1])
+    result = d_sum_g_2[1] * g_2_conj[1] + d_sum_g_2_conj[1] * g_2[1]
     return result
